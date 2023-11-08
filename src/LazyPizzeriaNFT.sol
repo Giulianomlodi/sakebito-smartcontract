@@ -8,10 +8,12 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract LazyPizzeriaNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
+    // Errors
     error NotActiveMint(); // Mint is not active
     error InsufficientBalance(); // Insufficient balance error
     error NotEnoughtValue(); // Not enough value error
 
+    // Variables
     string public baseURI;
     bool public activeMint = false;
     uint256 public lastId = 0;
@@ -19,6 +21,7 @@ contract LazyPizzeriaNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     constructor() ERC721("LazyPizza", "LZPZ") Ownable(msg.sender) {}
 
+    // Contract functions
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
