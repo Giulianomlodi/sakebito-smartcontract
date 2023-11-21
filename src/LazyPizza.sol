@@ -2,26 +2,32 @@
 
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
-contract LazyPizzeriaNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
+contract LazyPizza is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Errors
     error NotActiveMint(); // Mint is not active
     error InsufficientBalance(); // Insufficient balance error
-    error NotEnoughtValue(); // Not enough value error
+    error NotEnoughEth(); // Not enough ETH sent error
 
     // Variables
     string public baseURI;
-    bool public activeMint = false;
-    uint256 public lastId = 0;
-    uint256 public publicPrice = 90000000000000000; //0.09 ETH
+    uint256 public publicPrice = 5000000000000000; //0,005 ETH
+    uint256 private lastId = 0;
+    bool private activeMint = false;
+
+    //Events
+    event WrongPizza(address indexed client);
+    event PizzaSbagliata(address indexed client, bool indexed isPizzaSbagliata);
+
+    // Constructor
 
     constructor() ERC721("LazyPizza", "LZPZ") Ownable(msg.sender) {}
 
-    // Contract functions
+    // Withdraw Contract functions
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
@@ -36,15 +42,17 @@ contract LazyPizzeriaNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
         payable(_receiver).transfer(_amount);
     }
 
+    // Deposit ETH to the contract address
+
     function deposit() public payable onlyOwner {}
 
-    function setPublicPrice(uint256 _newPrice) public onlyOwner {
-        publicPrice = _newPrice;
-    }
+    // Setters Functions
 
     function setLastId(uint256 _newLastId) public onlyOwner {
         lastId = _newLastId;
     }
+
+    // Base URI functions
 
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
@@ -54,36 +62,32 @@ contract LazyPizzeriaNFT is ERC721Enumerable, Ownable, ReentrancyGuard {
         baseURI = _newBaseURI;
     }
 
+    // Minting Functions
+
     function setActiveMint(bool _activeMint) public onlyOwner {
         activeMint = _activeMint;
     }
 
-    function mintPublic() public payable nonReentrant {
-        require(activeMint == true);
+    function mintPizza() public payable nonReentrant {
+        if (!activeMint) {
+            revert NotActiveMint();
+        }
 
         if (msg.value < publicPrice) {
-            revert NotEnoughtValue();
+            revert NotEnoughEth();
         }
-        _safeMint(msg.sender, lastId + 1);
 
+        _safeMint(msg.sender, lastId + 1);
         lastId++;
     }
 
-    function multiMint(uint256 _amount) public payable nonReentrant {
-        require(activeMint == true);
+    //  Getter Functions
 
-        if (msg.value < (publicPrice * _amount)) {
-            revert NotEnoughtValue();
-        }
-
-        for (uint256 i = 0; i < _amount; i++) {
-            _safeMint(msg.sender, lastId + 1 + i);
-        }
-
-        lastId += _amount;
+    function getLastId() external view returns (uint256) {
+        return lastId;
     }
 
-    function mintTo(address _receiver, uint256 _tokenId) public onlyOwner {
-        _safeMint(_receiver, _tokenId);
+    function getActiveMint() external view returns (bool) {
+        return activeMint;
     }
 }

@@ -1,0 +1,197 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
+// import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
+
+contract LazyPizzeria is
+    ERC721Enumerable,
+    Ownable,
+    ReentrancyGuard,
+    VRFConsumerBaseV2
+{
+    // Errors
+    error NotActiveMint(); // Mint is not active
+    error InsufficientBalance(); // Insufficient balance error
+    error NotEnoughtValue(); // Not enough ETH sent error
+    error YouCantSelectPizzaSbagliata(); // User can't select pizza sbagliata
+
+    // Variables
+    string public baseURI;
+
+    bool public isPizzaSbagliata = false;
+
+    uint256 public publicPrice = 100000000000000; //0,0001 ETH TEST VALUE
+
+    uint256 public numeroRandom; // Per test da eliminare
+
+    uint256 private lastId = 0;
+    bool private activeMint = true;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
+
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_gasLane;
+    uint64 private immutable i_subscriptionId;
+    uint32 private immutable i_callbackGasLimit;
+
+    enum pizzaType {
+        Margherita,
+        Marinara,
+        Diavola,
+        Capricciosa,
+        Sbagliata
+    }
+
+    uint256 private s_randomnessInterval = uint(type(pizzaType).max) + 1;
+
+    // Create a mapping between user address selected pizza and the pizzaType
+    mapping(address => pizzaType) public userPizza;
+
+    // Create a mapping between the tokenId and the pizzaType
+    mapping(uint256 => pizzaType) public pizzaTypes;
+
+    // Create a mapping between the requestId and the user address
+    mapping(uint256 => address) private requestIdToSender;
+
+    // Create a mapping between the tokenId and the pizzaType chosen by the user
+    mapping(uint256 => pizzaType) private userPizzaTokenId;
+
+    //Events
+    event AirMint(address indexed client, uint256 indexed tokenId); // TEST EVENT TO BE DELETED
+    event WrongPizza(address indexed client);
+    event PizzaSbagliata(address indexed client, bool indexed isPizzaSbagliata);
+
+    // Constructor
+
+    constructor(
+        address vrfCoordinator,
+        bytes32 gasLane,
+        uint64 subscriptionId,
+        uint32 callbackGasLimit
+    )
+        ERC721("LazyPizza", "LZPZ")
+        Ownable(msg.sender)
+        VRFConsumerBaseV2(vrfCoordinator)
+    {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
+    }
+
+    // Withdraw Contract functions
+    function withdraw() public onlyOwner {
+        uint256 balance = address(this).balance;
+        payable(msg.sender).transfer(balance);
+    }
+
+    function withdrawTo(address _receiver, uint256 _amount) public onlyOwner {
+        uint256 balance = address(this).balance;
+
+        if (balance < _amount) {
+            revert InsufficientBalance();
+        }
+        payable(_receiver).transfer(_amount);
+    }
+
+    // Deposit ETH to the contract address
+
+    function deposit() public payable onlyOwner {}
+
+    // Setters Functions
+
+    function setLastId(uint256 _newLastId) public onlyOwner {
+        lastId = _newLastId;
+    }
+
+    // Base URI functions
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    function setBaseURI(string memory _newBaseURI) public onlyOwner {
+        baseURI = _newBaseURI;
+    }
+
+    // Minting Functions
+
+    function setActiveMint(bool _activeMint) public onlyOwner {
+        activeMint = _activeMint;
+    }
+
+    function GennyChoose(pizzaType _pizzaType) public payable nonReentrant {
+        if (!activeMint) {
+            revert NotActiveMint();
+        }
+
+        if (msg.value < publicPrice) {
+            revert NotEnoughtValue();
+        }
+
+        if (_pizzaType == pizzaType.Sbagliata) {
+            revert YouCantSelectPizzaSbagliata();
+        }
+
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane, //gas lane
+            i_subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+
+        requestIdToSender[requestId] = msg.sender;
+
+        uint256 tokenId = lastId + 1;
+
+        _safeMint(msg.sender, tokenId);
+        lastId++;
+        userPizzaTokenId[tokenId] = _pizzaType; // Mapping of token ID to pizza type chosen by user
+    }
+
+    function fulfillRandomWords(
+        uint256 /* requestId */,
+        uint256[] memory randomWords
+    ) internal override {
+        isPizzaSbagliata = randomWords[0] % s_randomnessInterval == 0;
+        numeroRandom = randomWords[0];
+        emit PizzaSbagliata(msg.sender, isPizzaSbagliata);
+
+        // If the pizza is sbagliata update the mapping of the token id as a pizza sbagliata type
+
+        pizzaTypes[lastId] = isPizzaSbagliata
+            ? pizzaType.Sbagliata
+            : userPizzaTokenId[lastId];
+
+        isPizzaSbagliata = false;
+    }
+
+    //  Getter Functions
+
+    function getLastId() external view returns (uint256) {
+        return lastId;
+    }
+
+    function getActiveMint() external view returns (bool) {
+        return activeMint;
+    }
+
+    function getMenuLenght() external view returns (uint256) {
+        return s_randomnessInterval;
+    }
+
+    function getPizzaTypeFromTokenId(
+        uint256 _tokenId
+    ) external view returns (pizzaType) {
+        return pizzaTypes[_tokenId];
+    }
+}
