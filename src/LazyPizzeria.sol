@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-// import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/AutomationCompatibleInterface.sol";
-
 contract LazyPizzeria is
     ERC721Enumerable,
     Ownable,
@@ -19,6 +17,7 @@ contract LazyPizzeria is
 {
     // Errors
     error NotActiveMint(); // Mint is not active
+    error ContractBalanceIsZero(); // Contract is empty
     error InsufficientBalance(); // Insufficient balance error
     error NotEnoughtValue(); // Not enough ETH sent error
     error YouCantSelectPizzaSbagliata(); // User can't select pizza sbagliata
@@ -33,7 +32,7 @@ contract LazyPizzeria is
     uint256 public numeroRandom; // Per test da eliminare
 
     uint256 private lastId = 0;
-    bool private activeMint = true;
+    bool private activeMint = false;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
 
@@ -89,6 +88,9 @@ contract LazyPizzeria is
 
     // Withdraw Contract functions
     function withdraw() public onlyOwner {
+        if (address(this).balance == 0) {
+            revert ContractBalanceIsZero();
+        }
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
     }
@@ -128,7 +130,7 @@ contract LazyPizzeria is
         activeMint = _activeMint;
     }
 
-    function GennyChoose(pizzaType _pizzaType) public payable nonReentrant {
+    function mintPizza(pizzaType _pizzaType) public payable nonReentrant {
         if (!activeMint) {
             revert NotActiveMint();
         }
