@@ -185,6 +185,23 @@ contract LazyPizzeria is
 
     // URI functions
 
+    function getPizzaTypeAsString(
+        pizzaType _type
+    ) internal pure returns (string memory) {
+        if (_type == pizzaType.Margherita) {
+            return "Margherita";
+        } else if (_type == pizzaType.Marinara) {
+            return "Marinara";
+        } else if (_type == pizzaType.Diavola) {
+            return "Diavola";
+        } else if (_type == pizzaType.Capricciosa) {
+            return "Capricciosa";
+        } else {
+            // pizzaType.Sbagliata
+            return "Sbagliata";
+        }
+    }
+
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
@@ -210,17 +227,28 @@ contract LazyPizzeria is
             ? s_CapricciosaURI
             : s_SbagliataURI;
 
+        string memory attributes = string(
+            abi.encodePacked(
+                '"attributes": [{"value": "',
+                getPizzaTypeAsString(userPizzaTokenId[tokenId]),
+                '"}]'
+            )
+        );
+
         return
             string(
                 abi.encodePacked(
                     _baseURI(),
                     Base64.encode(
-                        bytes( // bytes casting actually unnecessary as 'abi.encodePacked()' returns a bytes
+                        bytes(
                             abi.encodePacked(
                                 '{"name":"',
-                                name(), // You can add whatever name here
+                                name(), // Original NFT name
+                                " #", // Separator
+                                Strings.toString(tokenId), // Convert tokenId to string and append
                                 '", "description":"An NFT that reflects the mood of the owner, 100% on Chain!", ',
-                                '"attributes": [{"trait_type": "moodiness", "value": 100}], "image":"',
+                                attributes,
+                                ', "image":"',
                                 imageURI,
                                 '"}'
                             )
