@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
@@ -21,6 +22,7 @@ contract LazyPizzeria is
     error InsufficientBalance(); // Insufficient balance error
     error NotEnoughtValue(); // Not enough ETH sent error
     error YouCantSelectPizzaSbagliata(); // User can't select pizza sbagliata
+    error TokenUriNotFound(); // Token URI not found
 
     // Variables
     string public baseURI;
@@ -41,6 +43,13 @@ contract LazyPizzeria is
     uint64 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
 
+    // Pizza URI
+    string private s_MargheritaURI;
+    string private s_MarinaraURI;
+    string private s_DiavolaURI;
+    string private s_CapricciosaURI;
+    string private s_SbagliataURI;
+
     enum pizzaType {
         Margherita,
         Marinara,
@@ -50,9 +59,6 @@ contract LazyPizzeria is
     }
 
     uint256 private s_randomnessInterval = uint(type(pizzaType).max) + 1;
-
-    // Create a mapping between user address selected pizza and the pizzaType
-    mapping(address => pizzaType) public userPizza;
 
     // Create a mapping between the tokenId and the pizzaType
     mapping(uint256 => pizzaType) public pizzaTypes;
@@ -74,7 +80,12 @@ contract LazyPizzeria is
         address vrfCoordinator,
         bytes32 gasLane,
         uint64 subscriptionId,
-        uint32 callbackGasLimit
+        uint32 callbackGasLimit,
+        string memory margheritaUri,
+        string memory marinaraUri,
+        string memory diavolaUri,
+        string memory capricciosaUri,
+        string memory sbagliataUri
     )
         ERC721("LazyPizza", "LZPZ")
         Ownable(msg.sender)
@@ -84,6 +95,11 @@ contract LazyPizzeria is
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
+        s_MargheritaURI = margheritaUri;
+        s_MarinaraURI = marinaraUri;
+        s_DiavolaURI = diavolaUri;
+        s_CapricciosaURI = capricciosaUri;
+        s_SbagliataURI = sbagliataUri;
     }
 
     // Withdraw Contract functions
@@ -112,16 +128,6 @@ contract LazyPizzeria is
 
     function setLastId(uint256 _newLastId) public onlyOwner {
         lastId = _newLastId;
-    }
-
-    // Base URI functions
-
-    function _baseURI() internal view override returns (string memory) {
-        return baseURI;
-    }
-
-    function setBaseURI(string memory _newBaseURI) public onlyOwner {
-        baseURI = _newBaseURI;
     }
 
     // Minting Functions
@@ -175,6 +181,57 @@ contract LazyPizzeria is
             : userPizzaTokenId[lastId];
 
         isPizzaSbagliata = false;
+    }
+
+    // URI functions
+
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    function setBaseURI(string memory _newBaseURI) public onlyOwner {
+        baseURI = _newBaseURI;
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
+        _requireOwned(tokenId);
+
+        // if userPizzaTokenId is 0 it means that the pizza is margherita and the image URI is the margherita URI
+        string memory imageURI = userPizzaTokenId[tokenId] ==
+            pizzaType.Margherita
+            ? s_MargheritaURI
+            : userPizzaTokenId[tokenId] == pizzaType.Marinara
+            ? s_MarinaraURI
+            : userPizzaTokenId[tokenId] == pizzaType.Diavola
+            ? s_DiavolaURI
+            : userPizzaTokenId[tokenId] == pizzaType.Capricciosa
+            ? s_CapricciosaURI
+            : s_SbagliataURI;
+
+        return
+            string(
+                abi.encodePacked(
+                    _baseURI(),
+                    Base64.encode(
+                        bytes( // bytes casting actually unnecessary as 'abi.encodePacked()' returns a bytes
+                            abi.encodePacked(
+                                '{"name":"',
+                                name(), // You can add whatever name here
+                                '", "description":"An NFT that reflects the mood of the owner, 100% on Chain!", ',
+                                '"attributes": [{"trait_type": "moodiness", "value": 100}], "image":"',
+                                imageURI,
+                                '"}'
+                            )
+                        )
+                    )
+                )
+            );
+    }
+
+    function setSbagliataUri(string memory _newSbagliataUri) public onlyOwner {
+        s_SbagliataURI = _newSbagliataUri;
     }
 
     //  Getter Functions

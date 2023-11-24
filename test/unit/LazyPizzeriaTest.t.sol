@@ -30,6 +30,13 @@ contract LazyPizzeriaTest is Test {
     address public MINTER2 = makeAddr("MINTER2");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
 
+    // Pizza URIs
+    string margheritaUri;
+    string marinaraUri;
+    string diavolaUri;
+    string capricciosaUri;
+    string sbagliataUri;
+
     function setUp() external {
         deployer = new DeployLazyPizzeria();
         vm.deal(MINTER, STARTING_USER_BALANCE);
@@ -39,7 +46,12 @@ contract LazyPizzeriaTest is Test {
             gasLane,
             subscriptionId,
             callbackGasLimit,
-            linkToken
+            linkToken,
+            margheritaUri,
+            marinaraUri,
+            diavolaUri,
+            capricciosaUri,
+            sbagliataUri
         ) = helperConfig.activeNewtorkConfig();
         vm.deal(MINTER, STARTING_USER_BALANCE);
     }

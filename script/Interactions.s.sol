@@ -11,8 +11,18 @@ import {DevOpsTools} from "lib/foundry-devops/src/DevOpsTools.sol";
 contract CreateSubscription is Script {
     function createSubscriptionUsingConfig() internal returns (uint64) {
         HelperConfig helperConfig = new HelperConfig();
-        (address vrfCoordinator, , , , address linkToken) = helperConfig
-            .activeNewtorkConfig();
+        (
+            address vrfCoordinator,
+            ,
+            ,
+            ,
+            address linkToken,
+            ,
+            ,
+            ,
+            ,
+
+        ) = helperConfig.activeNewtorkConfig();
         return createSubscribtion(vrfCoordinator);
     }
 
@@ -44,7 +54,12 @@ contract FundSubscription is Script {
             ,
             uint64 subscriptionId,
             ,
-            address linkToken
+            address linkToken,
+            ,
+            ,
+            ,
+            ,
+
         ) = helperConfig.activeNewtorkConfig();
         functionSubscription(vrfCoordinator, subscriptionId, linkToken);
     }
@@ -100,8 +115,18 @@ contract AddConsumer is Script {
 
     function addConsumerUsingConfig(address lazypizza) public {
         HelperConfig helperConfig = new HelperConfig();
-        (address vrfCoordinator, , uint64 subscriptionId, , ) = helperConfig
-            .activeNewtorkConfig();
+        (
+            address vrfCoordinator,
+            ,
+            uint64 subscriptionId,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+
+        ) = helperConfig.activeNewtorkConfig();
         addConsumer(lazypizza, vrfCoordinator, subscriptionId);
     }
 

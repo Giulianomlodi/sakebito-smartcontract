@@ -15,7 +15,12 @@ contract DeployLazyPizzeria is Script {
             bytes32 gasLane,
             uint64 subscriptionId,
             uint32 callbackGasLimit,
-            address linkToken
+            address linkToken,
+            string memory margheritaUri,
+            string memory marinaraUri,
+            string memory diavolaUri,
+            string memory capricciosaUri,
+            string memory sbagliataUri
         ) = helperConfig.activeNewtorkConfig();
 
         if (subscriptionId == 0) {
@@ -37,7 +42,12 @@ contract DeployLazyPizzeria is Script {
             vrfCoordinator,
             gasLane,
             subscriptionId,
-            callbackGasLimit
+            callbackGasLimit,
+            margheritaUri,
+            marinaraUri,
+            diavolaUri,
+            capricciosaUri,
+            sbagliataUri
         );
 
         vm.stopBroadcast();
