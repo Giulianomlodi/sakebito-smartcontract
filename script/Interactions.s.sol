@@ -101,7 +101,7 @@ contract AddConsumer is Script {
         address vrfCoordinator,
         uint64 subscriptionId
     ) public {
-        console.log("Adding consume:", lazyPizza);
+        console.log("Adding consumer:", lazyPizza);
         console.log("Using vrfCoordinator:", vrfCoordinator);
         console.log("Using subscriptionId:", subscriptionId);
         console.log("On chain:", block.chainid);

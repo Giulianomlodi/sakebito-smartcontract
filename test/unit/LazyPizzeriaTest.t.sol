@@ -7,6 +7,7 @@ import {LazyPizzeria} from "../../src/LazyPizzeria.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract LazyPizzeriaTest is Test {
     event AirMint(address indexed client, uint256 indexed tokenId); // TEST EVENT TO BE DELETED
@@ -28,7 +29,7 @@ contract LazyPizzeriaTest is Test {
 
     address public MINTER = makeAddr("MINTER");
     address public MINTER2 = makeAddr("MINTER2");
-    uint256 public constant STARTING_USER_BALANCE = 10 ether;
+    uint256 public constant STARTING_USER_BALANCE = 0.5 ether;
 
     // Pizza URIs
     string margheritaUri;
@@ -37,9 +38,17 @@ contract LazyPizzeriaTest is Test {
     string capricciosaUri;
     string sbagliataUri;
 
+    address[] public users;
+
     function setUp() external {
         deployer = new DeployLazyPizzeria();
         vm.deal(MINTER, STARTING_USER_BALANCE);
+        for (uint i = 0; i < 10; i++) {
+            users.push(
+                makeAddr(string(abi.encodePacked("User", Strings.toString(i))))
+            );
+            vm.deal(users[i], STARTING_USER_BALANCE);
+        }
         (lazyPizzeria, helperConfig) = deployer.run();
         (
             vrfCoordinator,
@@ -53,7 +62,6 @@ contract LazyPizzeriaTest is Test {
             capricciosaUri,
             sbagliataUri
         ) = helperConfig.activeNewtorkConfig();
-        vm.deal(MINTER, STARTING_USER_BALANCE);
     }
 
     function testMintState() external view {
@@ -233,5 +241,87 @@ contract LazyPizzeriaTest is Test {
         );
 
         assert(lazyPizzeria.getLastId() == 1);
+    }
+
+    // Function that test with multiple minting and multiple users if at least one pizza is sbagliata
+
+    function testMintingAtLeastOnePizzaSbagliata() external {
+        vm.prank(lazyPizzeria.owner());
+        lazyPizzeria.setActiveMint(true);
+
+        uint256 mintPrice = lazyPizzeria.publicPrice();
+        bool sbagliataMinted = false;
+
+        for (uint i = 0; i < users.length; i++) {
+            vm.prank(users[i]);
+            lazyPizzeria.mintPizza{value: mintPrice}(
+                LazyPizzeria.pizzaType.Margherita
+            );
+
+            uint256 tokenId = lazyPizzeria.getLastId();
+            if (
+                uint(lazyPizzeria.getPizzaTypeFromTokenId(tokenId)) ==
+                uint(LazyPizzeria.pizzaType.Sbagliata)
+            ) {
+                sbagliataMinted = true;
+                break;
+            }
+        }
+
+        console.log("IS SBAGLIATA MINTED: ", sbagliataMinted);
+
+        assertTrue(sbagliataMinted, "A Pizza Sbagliata was minted");
+    }
+
+    function testProbabilityOfPizzaSbagliata() external {
+        vm.prank(lazyPizzeria.owner());
+        lazyPizzeria.setActiveMint(true);
+
+        uint256 mintPrice = lazyPizzeria.publicPrice();
+        uint256 sbagliataCount = 0;
+
+        // Simulate 100 mints
+        for (uint i = 0; i < 100; i++) {
+            address user = users[i];
+
+            // Simulate random number generation
+            uint256 simulatedRandomNumber = i; // Replace this with your method of simulating randomness
+
+            // Mock the callback from Chainlink VRF with the simulated random number
+            vm.mockCall(
+                address(lazyPizzeria),
+                abi.encodeWithSignature(
+                    "fulfillRandomWords(uint256,uint256[])",
+                    new uint256[](1)
+                ),
+                abi.encode(simulatedRandomNumber)
+            );
+
+            // User mints a pizza
+            vm.prank(user);
+            lazyPizzeria.mintPizza{value: mintPrice}(
+                LazyPizzeria.pizzaType.Margherita
+            );
+
+            // Check if the minted pizza is Sbagliata
+            uint256 tokenId = lazyPizzeria.getLastId();
+            if (
+                uint(lazyPizzeria.getPizzaTypeFromTokenId(tokenId)) ==
+                uint(LazyPizzeria.pizzaType.Sbagliata)
+            ) {
+                sbagliataCount++;
+            }
+        }
+
+        // Log the sbagliataCount
+        console.log("Total number of Pizza Sbagliata minted: ", sbagliataCount);
+
+        // Calculate the probability
+        uint256 probability = (sbagliataCount * 100) / 100;
+        console.log(
+            "Probability of getting a Pizza Sbagliata: ",
+            probability,
+            "%"
+        );
     }
 }

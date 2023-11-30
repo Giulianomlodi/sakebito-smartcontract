@@ -246,7 +246,7 @@ contract LazyPizzeria is
                                 name(), // Original NFT name
                                 " #", // Separator
                                 Strings.toString(tokenId), // Convert tokenId to string and append
-                                '", "description":"An NFT that reflects the mood of the owner, 100% on Chain!", ',
+                                '", "description":"A Pizza made by GENny! Sometimes you get what you ask, sometimes not! 100% on Chain!", ',
                                 attributes,
                                 ', "image":"',
                                 imageURI,
