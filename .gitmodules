@@ -13,3 +13,6 @@
 [submodule "lib/foundry-devops"]
 	path = lib/foundry-devops
 	url = https://github.com/Cyfrin/foundry-devops
+[submodule "lib/v2-core"]
+	path = lib/v2-core
+	url = https://github.com/Uniswap/v2-core
