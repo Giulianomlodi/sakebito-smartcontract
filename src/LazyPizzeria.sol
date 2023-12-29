@@ -3,12 +3,15 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 
 contract LazyPizzeria is
     ERC721Enumerable,
@@ -59,6 +62,18 @@ contract LazyPizzeria is
     }
 
     uint256 private s_randomnessInterval = uint(type(pizzaType).max) + 1;
+
+    //UNISWAP ROUTER ADDRESS
+    address private constant UNISWAP_ROUTER_ADDRESS =
+        0xC532a74256D3Db42D0Bf7a0400fEFDbad7694008; // SEPOLIA TEST
+
+    //UNISWAP V2 ROUTER
+    IUniswapV2Router02 private constant UNISWAP_V2_ROUTER =
+        IUniswapV2Router02(UNISWAP_ROUTER_ADDRESS);
+
+    // Address of the LINK token
+    address private constant LINK_TOKEN =
+        0x779877A7B0D9E8603169DdbD7836e478b4624789;
 
     // Create a mapping between the tokenId and the pizzaType
     mapping(uint256 => pizzaType) public pizzaTypes;
@@ -149,6 +164,23 @@ contract LazyPizzeria is
             revert YouCantSelectPizzaSbagliata();
         }
 
+        // Execute the swap before minting to avoid reentrancy concerns
+        _swapEthForLink((msg.value * 40) / 100);
+
+        // Check if the swap operation was successful
+        uint256 linkBalance = IERC20(LINK_TOKEN).balanceOf(address(this));
+        if (linkBalance == 0) {
+            revert InsufficientBalance();
+        }
+
+        // Fund the VRF subscription with the LINK tokens
+        LinkTokenInterface linkToken = LinkTokenInterface(LINK_TOKEN);
+        linkToken.transferAndCall(
+            address(i_vrfCoordinator),
+            linkBalance,
+            abi.encode(i_subscriptionId)
+        );
+
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, //gas lane
             i_subscriptionId,
@@ -181,6 +213,23 @@ contract LazyPizzeria is
             : userPizzaTokenId[lastId];
 
         isPizzaSbagliata = false;
+    }
+
+    // A function to fund the subscription with LINK tokens
+
+    function _swapEthForLink(uint256 _ethAmount) private {
+        // Create a path for ETH to LINK swap
+        address[] memory path = new address[](2);
+        path[0] = UNISWAP_V2_ROUTER.WETH();
+        path[1] = LINK_TOKEN;
+
+        // Make the swap
+        UNISWAP_V2_ROUTER.swapExactETHForTokens{value: _ethAmount}(
+            0, // Accept any amount of LINK
+            path,
+            address(this), // Contract address to receive LINK
+            block.timestamp + 15 minutes // Set a deadline for the swap to prevent miner manipulation
+        );
     }
 
     // URI functions

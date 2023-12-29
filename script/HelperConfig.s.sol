@@ -35,7 +35,7 @@ contract HelperConfig is Script {
             NetworkConfig({
                 vrfCoordinator: 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625,
                 gasLane: 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c,
-                subscriptionId: 0, // Update with actual subId 6917
+                subscriptionId: 6917, // Update with actual subId 6917
                 callbackGasLimit: 2500000,
                 linkToken: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
                 margheritaUri: "data:application/json;base64,PHN2ZyB3aWR0aD0iMzczIiBoZWlnaHQ9IjM3MyIgdmlld0JveD0iMCAwIDM3MyAzNzMiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzNzMiIGhlaWdodD0iMzczIiByeD0iMTg2LjUiIGZpbGw9IiNGN0U1QzYiLz4KPHJlY3QgeD0iMzgiIHk9IjM4IiB3aWR0aD0iMjk3IiBoZWlnaHQ9IjI5NyIgcng9IjE0OC41IiBmaWxsPSIjRkY2MjQyIi8+CjxjaXJjbGUgY3g9IjEyMC41IiBjeT0iMTUwLjUiIHI9IjQyLjUiIGZpbGw9IiNGRUZFRkUiLz4KPGNpcmNsZSBjeD0iMTQ0LjUiIGN5PSIyNDYuNSIgcj0iNDIuNSIgZmlsbD0iI0ZFRkVGRSIvPgo8Y2lyY2xlIGN4PSIyNDIuNSIgY3k9IjIyMC41IiByPSI0Mi41IiBmaWxsPSIjRkVGRUZFIi8+CjxjaXJjbGUgY3g9IjIxOC41IiBjeT0iMTE3LjUiIHI9IjQyLjUiIGZpbGw9IiNGRUZFRkUiLz4KPC9zdmc+Cg==",

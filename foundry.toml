@@ -2,8 +2,10 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+auto_detect_solc = true
+compiler_version = "0.8.20"
 
-remappings = ['@openzeppelin/contracts=lib/openzeppelin-contracts/contracts', '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/', '@solmate=lib/solmate/src/'] 
+remappings = ['@openzeppelin/contracts=lib/openzeppelin-contracts/contracts', '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/', '@solmate=lib/solmate/src/', '@uniswap/v2-periphery=lib/v2-periphery'] 
 
 
 

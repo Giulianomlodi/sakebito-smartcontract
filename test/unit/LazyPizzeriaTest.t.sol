@@ -8,6 +8,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "../mocks/LinkToken.sol";
 
 contract LazyPizzeriaTest is Test {
     event AirMint(address indexed client, uint256 indexed tokenId); // TEST EVENT TO BE DELETED
@@ -239,7 +240,7 @@ contract LazyPizzeriaTest is Test {
         lazyPizzeria.mintPizza{value: mintPrice}(
             LazyPizzeria.pizzaType.Diavola
         );
-
+        console.log("LAST ID: ", lazyPizzeria.getLastId());
         assert(lazyPizzeria.getLastId() == 1);
     }
 
