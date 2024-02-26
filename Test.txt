@@ -1,6 +1,6 @@
 // Stringa deploy Sepolia
 
-forge create --rpc-url $SEPOLIA_RPC_URL --private-key $DEPLOYER_KEY --etherscan-api-key $ETHERSCAN_API_KEY --verify   LazyPizzeria
+forge create --rpc-url $SEPOLIA_RPC_URL --private-key $DEPLOYER_KEY --etherscan-api-key $ETHERSCAN_API_KEY --verify   WallBlocks
 
 forge test --fork-url $SEPOLIA_RPC_URL --via-ir --match-test 
 
