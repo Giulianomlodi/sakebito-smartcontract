@@ -14,7 +14,6 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
     error ContractBalanceIsZero(); // Contract is empty
     error InsufficientBalance(); // Insufficient balance error
     error NotEnoughtValue(); // Not enough ETH sent error
-    error YouCantSelectPizzaSbagliata(); // User can't select pizza sbagliata
     error TokenUriNotFound(); // Token URI not found
     error WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist(); // Il muro ha un problema o non essite o il blocco che cerchi non esiste
     error BlockAlreadyMinted(); // Il blocco è già stato mintato
