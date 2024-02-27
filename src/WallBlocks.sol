@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
     // Errors
@@ -17,6 +17,9 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
     error TokenUriNotFound(); // Token URI not found
     error WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist(); // Il muro ha un problema o non essite o il blocco che cerchi non esiste
     error BlockAlreadyMinted(); // Il blocco è già stato mintato
+    error NotWhitelisted(); // Address not whitelisted
+    error AddressAlreadyClaimed(); // Address already Claimed the Whitelist
+    error InvalidProof(); // Invalid Proof
 
     // Structs
 
@@ -32,6 +35,10 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 y;
     }
 
+    // Merkle Root
+
+    bytes32 public merkleRoot;
+
     // Variables
     string public baseURI;
     uint256 public publicPrice = 100000000000000; //0,0001 ETH TEST VALUE
@@ -42,7 +49,8 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     mapping(uint256 => WallBlock) public wallBlocks; // Mapping of tokenId => WallBlock
     mapping(string => bool) public mintedBlocks; // Mapping of blockKey => bool if the block already is minted
-    mapping(uint256 => Wall) public wallDetails; // Mapping of Wall Block Ids => Wall
+    mapping(uint256 => Wall) public wallDetails; // Mapping of Wall Block Ids => Wall // Keeps track of existing walls
+    mapping(address => bool) public whitelist; // Mapping of address => bool // Keeps track of whitelisted addresses
 
     //Events
     //
@@ -74,21 +82,51 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     function deposit() public payable onlyOwner {}
 
-    // Setters Functions
+    // Merkle Root Function
 
-    function setLastId(uint256 _newLastId) public onlyOwner {
-        lastId = _newLastId;
-    }
+    function whitelistMint(
+        bytes32[] calldata _merkleProof,
+        uint256 wallId,
+        uint256 x,
+        uint256 y
+    ) public payable nonReentrant {
+        if (!whitelist[msg.sender]) {
+            revert NotWhitelisted();
+        }
+        if (whitelist[msg.sender]) {
+            revert AddressAlreadyClaimed();
+        }
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
 
-    function setWall(uint256 wallId, uint256 x, uint256 y) public onlyOwner {
-        wallDetails[wallId] = Wall(x, y, true);
+        if (MerkleProof.verify(_merkleProof, merkleRoot, leaf)) {
+            whitelist[msg.sender] = true;
+        } else {
+            revert InvalidProof();
+        }
+
+        if (msg.value < publicPrice) {
+            revert NotEnoughtValue();
+        }
+
+        Wall memory details = wallDetails[wallId];
+        if (!details.exists || x > details.x || y > details.y) {
+            revert WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist();
+        }
+
+        string memory blockKey = generateBlockKey(wallId, x, y);
+        if (mintedBlocks[blockKey]) {
+            revert BlockAlreadyMinted();
+        }
+
+        uint256 tokenId = lastId + 1;
+        wallBlocks[tokenId] = WallBlock(wallId, x, y);
+        mintedBlocks[blockKey] = true;
+
+        _safeMint(msg.sender, tokenId);
+        lastId++;
     }
 
     // Minting Functions
-
-    function setActiveMint(bool _activeMint) public onlyOwner {
-        activeMint = _activeMint;
-    }
 
     function mintBlock(
         uint256 wallId,
@@ -135,6 +173,24 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
 
     function setBaseURI(string memory _newBaseURI) public onlyOwner {
         baseURI = _newBaseURI;
+    }
+
+    //  Setter Functions
+
+    function setMerkleRoot(bytes32 _merkleRoot) public onlyOwner {
+        merkleRoot = _merkleRoot;
+    }
+
+    function setLastId(uint256 _newLastId) public onlyOwner {
+        lastId = _newLastId;
+    }
+
+    function setWall(uint256 wallId, uint256 x, uint256 y) public onlyOwner {
+        wallDetails[wallId] = Wall(x, y, true);
+    }
+
+    function setActiveMint(bool _activeMint) public onlyOwner {
+        activeMint = _activeMint;
     }
 
     //  Getter Functions
