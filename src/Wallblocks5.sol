@@ -14,7 +14,7 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
     error NotActiveMint();
     error ContractBalanceIsZero();
     error InsufficientBalance();
-    error NotEnoughtValue();
+    error NotEnoughValue();
     error WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist();
     error BlockAlreadyMinted();
     error NotWhitelisted();
@@ -24,7 +24,6 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
     error WallAlreadyCompleted();
     error NotTheTokenOwner();
     error WallIdSequenceError();
-    error NotEnoughValue();
     error WallIssue__TheWallDoesNotExist__OR__TheBlockDoesNotExist();
     error WallNotFullyCompleted();
     error NoNFTsProvided();
@@ -116,7 +115,7 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
             revert WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist();
         }
         if (msg.value < wall.price) {
-            revert NotEnoughtValue();
+            revert NotEnoughValue();
         }
 
         string memory blockKey = generateBlockKey(wallId, x, y);
@@ -168,7 +167,7 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
             revert WallIssue__TheWallDoNotExist__OR__TheBlockDoNotExist();
         }
         if (msg.value < wall.price) {
-            revert NotEnoughtValue();
+            revert NotEnoughValue();
         }
 
         string memory blockKey = generateBlockKey(wallId, x, y);
@@ -399,5 +398,43 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 tokenId
     ) external view returns (WallBlock memory) {
         return wallBlocks[tokenId];
+    }
+
+    function getMintedNFTsForWall(
+        uint256 wallId
+    ) public view returns (uint256[] memory) {
+        Wall memory wall = wallDetails[wallId];
+        uint256[] memory mintedNFTs = new uint256[](wall.x * wall.y);
+        uint256 mintedCount = 0;
+
+        for (uint256 x = 1; x <= wall.x; x++) {
+            for (uint256 y = 1; y <= wall.y; y++) {
+                string memory blockKey = generateBlockKey(wallId, x, y);
+                if (mintedBlocks[blockKey]) {
+                    uint256 tokenId;
+                    if (wallId > 1) {
+                        uint256 startIdForCurrentWall = maxTokenIdPerWall[
+                            wallId - 1
+                        ] + 1;
+                        tokenId =
+                            startIdForCurrentWall +
+                            (x - 1) *
+                            wall.y +
+                            (y - 1);
+                    } else {
+                        tokenId = 1 + (x - 1) * wall.y + (y - 1);
+                    }
+                    mintedNFTs[mintedCount] = tokenId;
+                    mintedCount++;
+                }
+            }
+        }
+
+        // Resize the array to the actual minted count
+        assembly {
+            mstore(mintedNFTs, mintedCount)
+        }
+
+        return mintedNFTs;
     }
 }
