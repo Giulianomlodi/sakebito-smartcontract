@@ -80,12 +80,7 @@ contract LazyPizzeria is
         address vrfCoordinator,
         bytes32 gasLane,
         uint64 subscriptionId,
-        uint32 callbackGasLimit,
-        string memory margheritaUri,
-        string memory marinaraUri,
-        string memory diavolaUri,
-        string memory capricciosaUri,
-        string memory sbagliataUri
+        uint32 callbackGasLimit
     )
         ERC721("LazyPizza", "LZPZ")
         Ownable(msg.sender)
@@ -95,11 +90,6 @@ contract LazyPizzeria is
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
-        s_MargheritaURI = margheritaUri;
-        s_MarinaraURI = marinaraUri;
-        s_DiavolaURI = diavolaUri;
-        s_CapricciosaURI = capricciosaUri;
-        s_SbagliataURI = sbagliataUri;
     }
 
     // Withdraw Contract functions
@@ -170,7 +160,8 @@ contract LazyPizzeria is
         uint256 /* requestId */,
         uint256[] memory randomWords
     ) internal override {
-        isPizzaSbagliata = randomWords[0] % s_randomnessInterval == 0;
+        //isPizzaSbagliata = randomWords[0] % s_randomnessInterval == 0;
+        isPizzaSbagliata = (randomWords[0] % 2) == 0;
         numeroRandom = randomWords[0];
         emit PizzaSbagliata(msg.sender, isPizzaSbagliata);
 
@@ -256,6 +247,27 @@ contract LazyPizzeria is
                     )
                 )
             );
+    }
+
+    // URI Setters Functions
+    function setMargheritaUri(
+        string memory _newMargheritaUri
+    ) public onlyOwner {
+        s_MargheritaURI = _newMargheritaUri;
+    }
+
+    function setMarinaraUri(string memory _newMarinaraUri) public onlyOwner {
+        s_MarinaraURI = _newMarinaraUri;
+    }
+
+    function setDiavolaUri(string memory _newDiavolaUri) public onlyOwner {
+        s_DiavolaURI = _newDiavolaUri;
+    }
+
+    function setCapricciosaUri(
+        string memory _newCapricciosaUri
+    ) public onlyOwner {
+        s_CapricciosaURI = _newCapricciosaUri;
     }
 
     function setSbagliataUri(string memory _newSbagliataUri) public onlyOwner {

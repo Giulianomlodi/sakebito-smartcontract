@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.20;
 
-import {DeployLazyPizzeria} from "../../script/DeployLazyPizzeria.s.sol";
-import {LazyPizzeria} from "../../src/LazyPizzeria.sol";
+import {DeployLazyPizzeria} from "../../script/DeployLazyPizza.s.sol";
+import {LazyPizzeria} from "../../src/LazyPizza.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {HelperConfig} from "../../script/HelperConfigLight.s.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -55,12 +55,7 @@ contract LazyPizzeriaTest is Test {
             gasLane,
             subscriptionId,
             callbackGasLimit,
-            linkToken,
-            margheritaUri,
-            marinaraUri,
-            diavolaUri,
-            capricciosaUri,
-            sbagliataUri
+            linkToken
         ) = helperConfig.activeNewtorkConfig();
     }
 
