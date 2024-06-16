@@ -46,7 +46,7 @@ deploy:
 
 
 create:
-	@forge create --via-ir --rpc-url $(SEPOLIA_RPC_URL) --private-key $(DEPLOYER_KEY) --etherscan-api-key $(ETHERSCAN_API_KEY) --verify  src/LazyPizzeria.sol:LazyPizzeria	--constructor-args-path script/args.json --gas-limit 20000000 
+	@forge create --via-ir --rpc-url $(SEPOLIA_RPC_URL) --private-key $(DEPLOYER_KEY) --etherscan-api-key $(ETHERSCAN_API_KEY) --verify  src/LazyPizza.sol:LazyPizzeria	--constructor-args-path script/args.json --gas-limit 20000000 
 
 
 coverage:

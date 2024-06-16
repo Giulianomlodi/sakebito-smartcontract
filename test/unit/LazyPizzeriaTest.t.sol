@@ -8,6 +8,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {HelperConfig} from "../../script/HelperConfigLight.s.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "forge-std/console.sol";
 
 contract LazyPizzeriaTest is Test {
     event AirMint(address indexed client, uint256 indexed tokenId); // TEST EVENT TO BE DELETED
@@ -240,6 +241,34 @@ contract LazyPizzeriaTest is Test {
 
     // Function that test with multiple minting and multiple users if at least one pizza is sbagliata
 
+    // function testMintingAtLeastOnePizzaSbagliata() external {
+    //     vm.prank(lazyPizzeria.owner());
+    //     lazyPizzeria.setActiveMint(true);
+
+    //     uint256 mintPrice = lazyPizzeria.publicPrice();
+    //     bool sbagliataMinted = false;
+
+    //     for (uint i = 0; i < users.length; i++) {
+    //         vm.prank(users[i]);
+    //         lazyPizzeria.mintPizza{value: mintPrice}(
+    //             LazyPizzeria.pizzaType.Margherita
+    //         );
+
+    //         uint256 tokenId = lazyPizzeria.getLastId();
+    //         if (
+    //             uint(lazyPizzeria.getPizzaTypeFromTokenId(tokenId)) ==
+    //             uint(LazyPizzeria.pizzaType.Sbagliata)
+    //         ) {
+    //             sbagliataMinted = true;
+    //             break;
+    //         }
+    //     }
+
+    //     console.log("IS SBAGLIATA MINTED: ", sbagliataMinted);
+
+    //     assertTrue(sbagliataMinted, "A Pizza Sbagliata was minted");
+    // }
+
     function testMintingAtLeastOnePizzaSbagliata() external {
         vm.prank(lazyPizzeria.owner());
         lazyPizzeria.setActiveMint(true);
@@ -248,12 +277,36 @@ contract LazyPizzeriaTest is Test {
         bool sbagliataMinted = false;
 
         for (uint i = 0; i < users.length; i++) {
-            vm.prank(users[i]);
+            address user = users[i];
+
+            // Simulate random number generation
+            uint256 simulatedRandomNumber = i; // Replace this with your method of simulating randomness
+
+            // Mock the callback from Chainlink VRF with the simulated random number
+            vm.mockCall(
+                address(lazyPizzeria),
+                abi.encodeWithSelector(
+                    lazyPizzeria.rawFulfillRandomWords.selector,
+                    0, // requestId
+                    abi.encode(simulatedRandomNumber)
+                ),
+                ""
+            );
+
+            // User mints a pizza
+            vm.prank(user);
             lazyPizzeria.mintPizza{value: mintPrice}(
                 LazyPizzeria.pizzaType.Margherita
             );
 
+            // Check if the minted pizza is Sbagliata
             uint256 tokenId = lazyPizzeria.getLastId();
+            console.log("Token ID: ", tokenId);
+            console.log(
+                "Pizza Type: ",
+                uint(lazyPizzeria.getPizzaTypeFromTokenId(tokenId))
+            );
+
             if (
                 uint(lazyPizzeria.getPizzaTypeFromTokenId(tokenId)) ==
                 uint(LazyPizzeria.pizzaType.Sbagliata)
@@ -277,7 +330,7 @@ contract LazyPizzeriaTest is Test {
 
         // Simulate 100 mints
         for (uint i = 0; i < 100; i++) {
-            address user = users[i];
+            address user = users[i % users.length]; // Use modulo to wrap around the users array
 
             // Simulate random number generation
             uint256 simulatedRandomNumber = i; // Replace this with your method of simulating randomness

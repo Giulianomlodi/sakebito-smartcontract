@@ -141,6 +141,7 @@ contract LazyPizzeria is
         if (_pizzaType == pizzaType.Sbagliata) {
             revert YouCantSelectPizzaSbagliata();
         }
+
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, //gas lane
             i_subscriptionId,
@@ -152,7 +153,6 @@ contract LazyPizzeria is
         requestIdToSender[requestId] = msg.sender;
 
         uint256 tokenId = lastId + 1;
-        requestIdToTokenId[requestId] = tokenId; // Store the token ID for the request ID
 
         _safeMint(msg.sender, tokenId);
         lastId++;
@@ -160,18 +160,19 @@ contract LazyPizzeria is
     }
 
     function fulfillRandomWords(
-        uint256 requestId,
+        uint256 /* requestId */,
         uint256[] memory randomWords
     ) internal override {
-        uint256 tokenId = requestIdToTokenId[requestId]; // Get the token ID for the request ID
+        //isPizzaSbagliata = randomWords[0] % s_randomnessInterval == 0;
         isPizzaSbagliata = (randomWords[0] % 2) == 0;
         numeroRandom = randomWords[0];
         emit PizzaSbagliata(msg.sender, isPizzaSbagliata);
 
         // If the pizza is sbagliata update the mapping of the token id as a pizza sbagliata type
-        pizzaTypes[tokenId] = isPizzaSbagliata
+
+        pizzaTypes[lastId] = isPizzaSbagliata
             ? pizzaType.Sbagliata
-            : userPizzaTokenId[tokenId];
+            : userPizzaTokenId[lastId];
 
         isPizzaSbagliata = false;
     }
