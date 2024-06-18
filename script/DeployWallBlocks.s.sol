@@ -3,7 +3,7 @@
 pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
-import {Wallblocks} from "./Wallblocks.sol";
+import {Wallblocks} from "../src/Wallblocks.sol";
 
 contract DeployWallblocks is Script {
     function run() external returns (Wallblocks) {
