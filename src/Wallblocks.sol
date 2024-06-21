@@ -400,6 +400,12 @@ contract WallBlocks is ERC721Enumerable, Ownable, ReentrancyGuard {
         return wallBlocks[tokenId];
     }
 
+    function getMaxTokenIdPerWall(
+        uint256 wallId
+    ) public view returns (uint256) {
+        return maxTokenIdPerWall[wallId];
+    }
+
     function getMintedNFTsForWall(
         uint256 wallId
     ) public view returns (uint256[] memory) {
