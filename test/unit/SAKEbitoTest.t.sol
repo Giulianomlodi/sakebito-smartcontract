@@ -103,7 +103,7 @@ contract SAKEbitoTest is Test {
         vm.stopPrank();
 
         vm.prank(MINTER);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
 
         assertEq(sakebito.balanceOf(MINTER), 1);
         assertEq(sakebito.ownerOf(1), MINTER);
@@ -117,7 +117,7 @@ contract SAKEbitoTest is Test {
 
         vm.prank(MINTER);
         vm.expectRevert(SAKEbito.MintNotActive.selector);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
     }
 
     function testMintFailsWhenInsufficientPayment() public {
@@ -129,7 +129,7 @@ contract SAKEbitoTest is Test {
 
         vm.prank(MINTER);
         vm.expectRevert(SAKEbito.InsufficientPayment.selector);
-        sakebito.mint{value: 0.05 ether}();
+        sakebito.mint{value: 0.05 ether}(1);
     }
 
     function testPaymentSplit() public {
@@ -143,7 +143,7 @@ contract SAKEbitoTest is Test {
         uint256 initialDevBalance = DEV.balance;
 
         vm.prank(MINTER);
-        sakebito.mint{value: 1 ether}();
+        sakebito.mint{value: 1 ether}(1);
 
         assertEq(OWNER.balance - initialOwnerBalance, 0.9 ether);
         assertEq(DEV.balance - initialDevBalance, 0.1 ether);
@@ -157,7 +157,7 @@ contract SAKEbitoTest is Test {
         vm.stopPrank();
 
         vm.prank(MINTER);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
 
         string memory uri = sakebito.tokenURI(1);
         assertEq(uri, "ipfs://batch1/1.json");
@@ -198,7 +198,7 @@ contract SAKEbitoTest is Test {
 
         vm.prank(MINTER);
         vm.expectRevert(SAKEbito.BatchNotActive.selector);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
     }
 
     function testMintFromNonExistentBatch() public {
@@ -207,7 +207,7 @@ contract SAKEbitoTest is Test {
 
         vm.prank(MINTER);
         vm.expectRevert(SAKEbito.NoBatchActive.selector);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
     }
 
     function testMintFailsWhenBatchEnded() public {
@@ -218,11 +218,11 @@ contract SAKEbitoTest is Test {
         vm.stopPrank();
 
         vm.prank(MINTER);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
 
         vm.prank(MINTER2);
         vm.expectRevert(SAKEbito.BatchNotActive.selector);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
     }
 
     function testMintFailsWhenBatchLimitReached() public {
@@ -233,11 +233,11 @@ contract SAKEbitoTest is Test {
         vm.stopPrank();
 
         vm.prank(MINTER);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
 
         vm.prank(MINTER2);
         vm.expectRevert(SAKEbito.BatchNotActive.selector);
-        sakebito.mint{value: 0.1 ether}();
+        sakebito.mint{value: 0.1 ether}(1);
     }
 
     function testUpdateMerkleRoot() public {
@@ -331,5 +331,227 @@ contract SAKEbitoTest is Test {
         vm.prank(MINTER);
         vm.expectRevert(SAKEbito.WhitelistAlreadyClaimed.selector);
         sakebito.whitelistMint{value: 0.9 ether}(proof);
+    }
+
+    function testMintMultiple() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        sakebito.mint{value: 0.3 ether}(3);
+
+        assertEq(sakebito.balanceOf(MINTER), 3);
+        assertEq(sakebito.ownerOf(1), MINTER);
+        assertEq(sakebito.ownerOf(2), MINTER);
+        assertEq(sakebito.ownerOf(3), MINTER);
+    }
+
+    function testMintMultipleFailsWithInvalidAmount() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        vm.expectRevert(SAKEbito.InvalidMintAmount.selector);
+        sakebito.mint{value: 0.4 ether}(4);
+
+        vm.prank(MINTER);
+        vm.expectRevert(SAKEbito.InvalidMintAmount.selector);
+        sakebito.mint{value: 0 ether}(0);
+    }
+
+    function testMintMultipleFailsWithInsufficientPayment() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        vm.expectRevert(SAKEbito.InsufficientPayment.selector);
+        sakebito.mint{value: 0.2 ether}(3);
+    }
+
+    function testMintMultipleFailsWhenBatchLimitReached() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 5);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        sakebito.mint{value: 0.3 ether}(3);
+
+        vm.prank(MINTER2);
+        vm.expectRevert(SAKEbito.BatchLimitReached.selector);
+        sakebito.mint{value: 0.3 ether}(3);
+    }
+
+    function testPaymentSplitForMultipleMint() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        uint256 initialOwnerBalance = OWNER.balance;
+        uint256 initialDevBalance = DEV.balance;
+
+        vm.prank(MINTER);
+        sakebito.mint{value: 3 ether}(3);
+
+        assertEq(OWNER.balance - initialOwnerBalance, 2.7 ether);
+        assertEq(DEV.balance - initialDevBalance, 0.3 ether);
+    }
+
+    function testTokenURIForMultipleMint() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        sakebito.mint{value: 0.3 ether}(3);
+
+        string memory uri1 = sakebito.tokenURI(1);
+        string memory uri2 = sakebito.tokenURI(2);
+        string memory uri3 = sakebito.tokenURI(3);
+
+        assertEq(uri1, "ipfs://batch1/1.json");
+        assertEq(uri2, "ipfs://batch1/2.json");
+        assertEq(uri3, "ipfs://batch1/3.json");
+    }
+
+    // Modify existing whitelist test to ensure it still only allows minting one token
+    function testWhitelistMintOnlyAllowsSingleMint() public {
+        bytes32[] memory proof = new bytes32[](0);
+        bytes32 root = keccak256(abi.encodePacked(MINTER));
+
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(true);
+        sakebito.updateMerkleRoot(root);
+        vm.stopPrank();
+
+        vm.prank(MINTER);
+        sakebito.whitelistMint{value: 0.9 ether}(proof);
+
+        assertEq(sakebito.balanceOf(MINTER), 1);
+        assertEq(sakebito.ownerOf(1), MINTER);
+
+        // Attempt to mint again should fail
+        vm.expectRevert(SAKEbito.WhitelistAlreadyClaimed.selector);
+        vm.prank(MINTER);
+        sakebito.whitelistMint{value: 0.9 ether}(proof);
+    }
+
+    function testMintTo() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+
+        assertEq(sakebito.balanceOf(MINTER), 1);
+        assertEq(sakebito.ownerOf(1), MINTER);
+    }
+
+    function testMintToFailsWhenNoActiveBatch() public {
+        vm.prank(OWNER);
+        vm.expectRevert(SAKEbito.NoActiveBatch.selector);
+        sakebito.mintTo(MINTER);
+    }
+
+    function testMintToFailsWhenBatchEnded() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.endBatch();
+        vm.expectRevert(SAKEbito.BatchAlreadyCompleted.selector);
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+    }
+
+    function testMintToFailsWhenBatchLimitReached() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 1);
+        sakebito.activateBatch();
+        sakebito.mintTo(MINTER);
+
+        // Use the actual error selector thrown by the contract
+        bytes4 expectedErrorSelector = bytes4(0xd0b58d40);
+
+        vm.expectRevert(abi.encodeWithSelector(expectedErrorSelector));
+        sakebito.mintTo(MINTER2);
+        vm.stopPrank();
+    }
+
+    function testMintToDoesNotRequirePayment() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        uint256 initialBalance = MINTER.balance;
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+
+        assertEq(MINTER.balance, initialBalance);
+        assertEq(sakebito.balanceOf(MINTER), 1);
+    }
+
+    function testMintToWorksWhenMintNotActive() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.setActiveMint(false);
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+
+        assertEq(sakebito.balanceOf(MINTER), 1);
+        assertEq(sakebito.ownerOf(1), MINTER);
+    }
+
+    function testMintToIncreasesBatchMintedCount() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+
+        (, , , , , , , uint256 minted) = sakebito.batches(1);
+        assertEq(minted, 1);
+    }
+
+    function testMintToEmitsNFTMintedEvent() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 100);
+        sakebito.activateBatch();
+
+        vm.expectEmit(true, true, true, true);
+        emit SAKEbito.NFTMinted(MINTER, 1, 1);
+
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+    }
+
+    function testMintToEndsBatchWhenLimitReached() public {
+        vm.startPrank(OWNER);
+        sakebito.createBatch("Batch1", "ipfs://batch1/", 0.1 ether, 1);
+        sakebito.activateBatch();
+
+        vm.expectEmit(true, true, true, true);
+        emit SAKEbito.BatchEnded(1);
+
+        sakebito.mintTo(MINTER);
+        vm.stopPrank();
+
+        (, , , , , bool active, bool ended, ) = sakebito.batches(1);
+        assertFalse(active);
+        assertTrue(ended);
     }
 }

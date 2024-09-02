@@ -38,6 +38,8 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     error PreviousBatchNotEnded();
     error BatchDoesNotExist();
     error WhitelistAlreadyClaimed();
+    error InvalidMintAmount();
+    error NoActiveBatch();
 
     /**
      * @dev Struct to store batch information
@@ -62,6 +64,9 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
 
     // Mappings
     mapping(address => bool) public whitelistClaimed;
+
+    // Constants
+    uint256 public constant MAX_MINT_PER_TX = 3;
 
     // Events
     event BatchCreated(uint256 indexed batchId, string name, uint256 limit);
@@ -156,23 +161,25 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows public minting of NFTs
+     * @dev Allows public minting of multiple NFTs (1 to 3)
+     * @param amount The number of NFTs to mint (1 to 3)
      */
-    function mint() external payable nonReentrant {
+    function mint(uint256 amount) external payable nonReentrant {
+        if (amount == 0 || amount > MAX_MINT_PER_TX) revert InvalidMintAmount();
         if (!activeMint) revert MintNotActive();
         if (currentBatchId == 0) revert NoBatchActive();
 
         Batch storage batch = batches[currentBatchId];
         if (!batch.active) revert BatchNotActive();
         if (batch.ended) revert BatchAlreadyCompleted();
-        if (msg.value < batch.cost) revert InsufficientPayment();
-        if (batch.minted >= batch.limit) revert BatchLimitReached();
+        if (msg.value < batch.cost * amount) revert InsufficientPayment();
+        if (batch.minted + amount > batch.limit) revert BatchLimitReached();
 
-        _mintLogic();
+        _mintLogic(amount);
     }
 
     /**
-     * @dev Allows whitelisted addresses to mint NFTs at a discount
+     * @dev Allows whitelisted addresses to mint a single NFT at a discount
      * @param _merkleProof Merkle proof to verify whitelist status
      */
     function whitelistMint(
@@ -190,22 +197,28 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         if (!batch.active) revert BatchNotActive();
         if (batch.ended) revert BatchAlreadyCompleted();
 
-        uint256 discountedCost = (batch.cost * 90) / 100; // 10% discount
+        uint256 discountedCost = (batch.cost * 85) / 100; // 15% discount
         if (msg.value < discountedCost) revert InsufficientPayment();
         if (batch.minted >= batch.limit) revert BatchLimitReached();
 
         whitelistClaimed[msg.sender] = true;
-        _mintLogic();
+        _mintLogic(1);
     }
 
     /**
      * @dev Internal function to handle minting logic
+     * @param amount The number of NFTs to mint
      */
-    function _mintLogic() internal {
+    function _mintLogic(uint256 amount) internal {
         Batch storage batch = batches[currentBatchId];
-        uint256 tokenId = batch.minted + 1;
-        _safeMint(msg.sender, tokenId);
-        batch.minted++;
+        uint256 startTokenId = batch.minted + 1;
+
+        for (uint256 i = 0; i < amount; i++) {
+            _safeMint(msg.sender, startTokenId + i);
+            emit NFTMinted(msg.sender, startTokenId + i, currentBatchId);
+        }
+
+        batch.minted += amount;
 
         if (batch.minted == batch.limit) {
             batch.ended = true;
@@ -214,14 +227,38 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         }
 
         // Split payment between dev and owner
-        uint256 devShare = (msg.value * 10) / 100;
-        uint256 ownerShare = msg.value - devShare;
+        uint256 totalPayment = batch.cost * amount;
+        uint256 devShare = (totalPayment * 10) / 100;
+        uint256 ownerShare = totalPayment - devShare;
 
         (bool devSuccess, ) = payable(devAddress).call{value: devShare}("");
         (bool ownerSuccess, ) = payable(owner()).call{value: ownerShare}("");
         require(devSuccess && ownerSuccess, "Transfer failed");
+    }
 
-        emit NFTMinted(msg.sender, tokenId, currentBatchId);
+    /**
+     * @dev Allows the owner to mint a free NFT to a specific address
+     * @param to The address to receive the free NFT
+     */
+    function mintTo(address to) external onlyOwner nonReentrant {
+        if (currentBatchId == 0) revert NoActiveBatch();
+
+        Batch storage batch = batches[currentBatchId];
+        if (batch.ended) revert BatchAlreadyCompleted();
+        if (batch.minted >= batch.limit) revert BatchLimitReached();
+
+        uint256 tokenId = batch.minted + 1;
+        _safeMint(to, tokenId);
+
+        batch.minted += 1;
+
+        emit NFTMinted(to, tokenId, currentBatchId);
+
+        if (batch.minted == batch.limit) {
+            batch.ended = true;
+            batch.active = false;
+            emit BatchEnded(currentBatchId);
+        }
     }
 
     /**
