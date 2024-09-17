@@ -11,19 +11,8 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
  * @title SAKEbito
  * @author otakun_0x
  * @notice This contract manages the SAKEbito NFT collection, representing membership to an exclusive Sake discovery community.
- * @dev Implements ERC721 token standard with batched minting functionality and whitelist support.
+ * @dev Implements ERC721 token standard with batched minting functionality, whitelist support, and MoonPay integration.
  * @custom:website https://www.sakebito.xyz/
- *
- * SAKEbito unveils the finest Sake hidden in Japan's little villages to the world.
- * It redefines the pathway to hidden Japanese Sake, unveiling centuries-old craftsmanship of Sake brewing.
- * The project connects curious minds in real life beyond borders, enabled by web3 digital innovation.
- *
- * Features:
- * - Lifetime Membership
- * - Exclusive offerings for members
- * - Members-only premium Sake tasting
- * - Priority prices for members
- * - Discovery of finest Sake hidden in Japan's villages
  */
 contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     // Custom errors
@@ -41,6 +30,7 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     error InvalidMintAmount();
     error NoActiveBatch();
     error TransferFailed();
+    error UnauthorizedMoonpayCall();
 
     /**
      * @dev Struct to store batch information
@@ -72,6 +62,9 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     uint256 public constant DEV_SHARE_PERCENTAGE = 10;
     uint256 public constant ADMIN_SHARE_PERCENTAGE = 90;
 
+    // MoonPay integration
+    address public moonpayAddress;
+
     // Events
     event BatchCreated(uint256 indexed batchId, string name, uint256 limit);
     event BatchActivated(uint256 indexed batchId);
@@ -90,6 +83,7 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         uint256 devAmount,
         uint256 adminAmount
     );
+    event MoonpayAddressUpdated(address newMoonpayAddress);
 
     /**
      * @dev Constructor to initialize the SAKEbito contract
@@ -188,7 +182,7 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         if (msg.value < batch.cost * amount) revert InsufficientPayment();
         if (batch.minted + amount > batch.limit) revert BatchLimitReached();
 
-        _mintLogic(amount, msg.value);
+        _mintLogic(msg.sender, amount);
     }
 
     /**
@@ -215,21 +209,21 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         if (batch.minted >= batch.limit) revert BatchLimitReached();
 
         whitelistClaimed[msg.sender] = true;
-        _mintLogic(1, msg.value);
+        _mintLogic(msg.sender, 1);
     }
 
     /**
      * @dev Internal function to handle minting logic
+     * @param to The address to receive the minted NFTs
      * @param amount The number of NFTs to mint
-     * @param totalPayment The total amount of Ether received for this mint
      */
-    function _mintLogic(uint256 amount, uint256 totalPayment) internal {
+    function _mintLogic(address to, uint256 amount) internal {
         Batch storage batch = batches[currentBatchId];
         uint256 startTokenId = batch.minted + 1;
 
         for (uint256 i = 0; i < amount; i++) {
-            _safeMint(msg.sender, startTokenId + i);
-            emit NFTMinted(msg.sender, startTokenId + i, currentBatchId);
+            _safeMint(to, startTokenId + i);
+            emit NFTMinted(to, startTokenId + i, currentBatchId);
         }
 
         batch.minted += amount;
@@ -240,10 +234,35 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
             emit BatchEnded(currentBatchId);
         }
 
+        // Split payment between dev and admin
+        uint256 totalPayment = batch.cost * amount;
         uint256 devShare = (totalPayment * DEV_SHARE_PERCENTAGE) / 100;
         uint256 adminShare = totalPayment - devShare;
 
         _distributePayment(devShare, adminShare);
+    }
+
+    /**
+     * @dev Allows public minting of multiple NFTs (1 to 3) using MoonPay.
+     * @param to The buyer's wallet address.
+     * @param amount The number of NFTs to mint (1 to 3).
+     */
+    function mintMoonpay(
+        address to,
+        uint256 amount
+    ) external payable nonReentrant {
+        if (msg.sender != moonpayAddress) revert UnauthorizedMoonpayCall();
+        if (amount == 0 || amount > MAX_MINT_PER_TX) revert InvalidMintAmount();
+        if (!activeMint) revert MintNotActive();
+        if (currentBatchId == 0) revert NoBatchActive();
+
+        Batch storage batch = batches[currentBatchId];
+        if (!batch.active) revert BatchNotActive();
+        if (batch.ended) revert BatchAlreadyCompleted();
+        if (msg.value < batch.cost * amount) revert InsufficientPayment();
+        if (batch.minted + amount > batch.limit) revert BatchLimitReached();
+
+        _mintLogic(to, amount);
     }
 
     /**
@@ -336,5 +355,14 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
             revert BatchDoesNotExist();
         batches[_batchId].baseUri = _newBaseUri;
         emit BatchBaseURIUpdated(_batchId, _newBaseUri);
+    }
+
+    /**
+     * @dev Sets the MoonPay contract address
+     * @param _moonpayAddress The address of the MoonPay contract
+     */
+    function setMoonpayAddress(address _moonpayAddress) external onlyOwner {
+        moonpayAddress = _moonpayAddress;
+        emit MoonpayAddressUpdated(_moonpayAddress);
     }
 }

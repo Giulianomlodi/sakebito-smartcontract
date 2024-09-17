@@ -188,7 +188,7 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         if (msg.value < batch.cost * amount) revert InsufficientPayment();
         if (batch.minted + amount > batch.limit) revert BatchLimitReached();
 
-        _mintLogic(amount, msg.value);
+        _mintLogic(amount);
     }
 
     /**
@@ -215,15 +215,14 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
         if (batch.minted >= batch.limit) revert BatchLimitReached();
 
         whitelistClaimed[msg.sender] = true;
-        _mintLogic(1, msg.value);
+        _mintLogic(1);
     }
 
     /**
      * @dev Internal function to handle minting logic
      * @param amount The number of NFTs to mint
-     * @param totalPayment The total amount of Ether received for this mint
      */
-    function _mintLogic(uint256 amount, uint256 totalPayment) internal {
+    function _mintLogic(uint256 amount) internal {
         Batch storage batch = batches[currentBatchId];
         uint256 startTokenId = batch.minted + 1;
 
@@ -240,6 +239,57 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
             emit BatchEnded(currentBatchId);
         }
 
+        // Split payment between dev and admin
+        uint256 totalPayment = batch.cost * amount;
+        uint256 devShare = (totalPayment * DEV_SHARE_PERCENTAGE) / 100;
+        uint256 adminShare = totalPayment - devShare;
+
+        _distributePayment(devShare, adminShare);
+    }
+
+    /**
+     * @dev Allows public minting of multiple NFTs (1 to 3) using MoonPay.
+     * Accepts the buyer's address as a parameter but enforces that the minted NFTs are sent to msg.sender.
+     * @param to The buyer's wallet address (input as per MoonPay requirements, but will be overridden to msg.sender).
+     * @param amount The number of NFTs to mint (1 to 3).
+     */
+    function mintMoonpay(
+        address to,
+        uint256 amount
+    ) external payable nonReentrant {
+        if (amount == 0 || amount > MAX_MINT_PER_TX) revert InvalidMintAmount();
+        if (!activeMint) revert MintNotActive();
+        if (currentBatchId == 0) revert NoBatchActive();
+
+        Batch storage batch = batches[currentBatchId];
+        if (!batch.active) revert BatchNotActive();
+        if (batch.ended) revert BatchAlreadyCompleted();
+        if (msg.value < batch.cost * amount) revert InsufficientPayment();
+        if (batch.minted + amount > batch.limit) revert BatchLimitReached();
+
+        // Force the recipient to be msg.sender despite receiving 'to' as input
+        _mintLogicMoon(msg.sender, amount); // Overrides the `to` parameter with `msg.sender`
+    }
+
+    function _mintLogicMoon(address to, uint256 amount) internal {
+        Batch storage batch = batches[currentBatchId];
+        uint256 startTokenId = batch.minted + 1;
+
+        for (uint256 i = 0; i < amount; i++) {
+            _safeMint(to, startTokenId + i); // Mint to msg.sender, passed as `to`
+            emit NFTMinted(to, startTokenId + i, currentBatchId);
+        }
+
+        batch.minted += amount;
+
+        if (batch.minted == batch.limit) {
+            batch.ended = true;
+            batch.active = false;
+            emit BatchEnded(currentBatchId);
+        }
+
+        // Split payment between dev and admin
+        uint256 totalPayment = batch.cost * amount;
         uint256 devShare = (totalPayment * DEV_SHARE_PERCENTAGE) / 100;
         uint256 adminShare = totalPayment - devShare;
 
