@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
- * @title SAKEbito
+ * @title SAKEbito second implementation
  * @author otakun_0x
  * @notice This contract manages the SAKEbito NFT collection, representing membership to an exclusive Sake discovery community.
  * @dev Implements ERC721 token standard with batched minting functionality and whitelist support.
@@ -287,7 +287,7 @@ contract SAKEbito is ERC721, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the base URI for the current batch
+     * @dev Returns the base URI for the current edition batch
      */
     function _baseURI() internal view override returns (string memory) {
         return batches[currentBatchId].baseUri;
